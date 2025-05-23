@@ -1,35 +1,59 @@
-class Solution {
-    int answer = Integer.MAX_VALUE;
-    
-    public int solution(String begin, String target, String[] words) {
-        boolean[] visited = new boolean[words.length];
-        
-        dfs(begin, target, words, visited, 0);
-        return answer==Integer.MAX_VALUE ? 0: answer;
-    }
-        
-    private void dfs (String curr, String target, String[] words, boolean[] visited, int depth){
-        if (curr.equals(target)){
-            answer = Math.min(answer, depth);
-            return;
-        }
+import java.util.*;
 
-        for(int i = 0; i < words.length ; i ++){
-            if (!visited[i] && letterDiff(curr, words[i])){
-                visited[i] = true;
-                dfs(words[i], target, words, visited, depth+1);
-                // 실패한 경우 취소: 백트래킹
-                visited[i] = false;
+class Solution {
+    static int N;
+    
+    class wordInfo {
+        String w;
+        int d;
+        
+        public wordInfo(String w, int d){
+            this.w = w;
+            this.d = d;
+        }
+    }
+    public int solution(String begin, String target, String[] words) {
+        int answer = 0;
+        N = begin.length();
+        Deque<wordInfo> q = new ArrayDeque<>();
+        Set<String> v = new HashSet<>();
+        
+        
+        Set<String> wordSet = new HashSet<>(Arrays.asList(words));
+        if (!wordSet.contains(target)) return 0;
+        
+        q.add(new wordInfo(begin, 0));
+        v.add(begin);
+        
+        // BFS
+        while (!q.isEmpty()){
+            wordInfo cur = q.remove();
+            if (cur.w.equals(target)) return cur.d;
+            
+            for (String nword : words) {
+                if(check(cur.w, nword)) {
+                    if(!v.contains(nword)){
+                        v.add(nword);
+                        q.add(new wordInfo(nword, cur.d+1));
+                    }
+                }
             }
         }
+        
+        return 0;
     }
-
-    private boolean letterDiff(String a, String b){
+    
+    
+    boolean check(String cur_word, String check_word){
         int cnt = 0;
-        for (int i = 0; i<a.length(); i++){
-            if (a.charAt(i) != b.charAt(i)) cnt ++;
+        
+        for (int i = 0; i < N; i++){
+            if (cur_word.charAt(i) != check_word.charAt(i)){
+                cnt ++;
+                if (cnt > 1) return false;
+            }
         }
-        return cnt == 1;
+        if (cnt == 1) return true;
+        return false;
     }
 }
-        

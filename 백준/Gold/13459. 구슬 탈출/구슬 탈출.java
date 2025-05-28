@@ -1,3 +1,4 @@
+import java.io.*;
 import java.util.*;
 
 public class Main {
@@ -15,91 +16,97 @@ public class Main {
 
     static int n, m;
     static char[][] board;
-    static boolean[][][][] visited;
     static int[] dx = {-1, 1, 0, 0}; // 상하좌우
     static int[] dy = {0, 0, -1, 1};
 
-    public static void main(String[] args) throws Exception {
-        Scanner sc = new Scanner(System.in);
-        n = sc.nextInt();
-        m = sc.nextInt();
-        sc.nextLine(); // 개행 처리
+    public static void main(String[] args) throws IOException {
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        String[] nm = br.readLine().split(" ");
+        n = Integer.parseInt(nm[0]);
+        m = Integer.parseInt(nm[1]);
 
         board = new char[n][m];
-        State start = null;
+        int rx = 0, ry = 0, bx = 0, by = 0;
 
-        // 입력 받으면서 R, B 위치 찾기
+        // 보드와 초기 위치 세팅
         for (int i = 0; i < n; i++) {
-            String row = sc.nextLine();
+            String line = br.readLine();
             for (int j = 0; j < m; j++) {
-                board[i][j] = row.charAt(j);
+                board[i][j] = line.charAt(j);
                 if (board[i][j] == 'R') {
-                    board[i][j] = '.';
-                    if (start == null) start = new State(i, j, 0, 0, 0);
-                    else start.rx = i; start.ry = j;
+                    rx = i;
+                    ry = j;
                 } else if (board[i][j] == 'B') {
-                    board[i][j] = '.';
-                    if (start == null) start = new State(0, 0, i, j, 0);
-                    else start.bx = i; start.by = j;
+                    bx = i;
+                    by = j;
                 }
             }
         }
 
-        visited = new boolean[n][m][n][m];
-        System.out.println(bfs(start));
-    }
-
-    // 구슬 굴리는 함수: 벽(#) 또는 구멍(O)까지 굴림
-    static int[] roll(int x, int y, int dir) {
-        int dist = 0;
-        while (board[x + dx[dir]][y + dy[dir]] != '#' && board[x][y] != 'O') {
-            x += dx[dir];
-            y += dy[dir];
-            dist++;
-            if (board[x][y] == 'O') break;
-        }
-        return new int[]{x, y, dist};
-    }
-
-    static int bfs(State start) {
+        // BFS 시작
         Deque<State> q = new ArrayDeque<>();
-        q.add(start);
-        visited[start.rx][start.ry][start.bx][start.by] = true;
+        Set<String> visited = new HashSet<>();
+
+        q.add(new State(rx, ry, bx, by, 0));
+        visited.add(rx + "," + ry + "," + bx + "," + by);
 
         while (!q.isEmpty()) {
             State cur = q.poll();
-            if (cur.depth >= 10) return 0;
 
-            for (int d = 0; d < 4; d++) {
-                // 빨간 구슬 이동
-                int[] r = roll(cur.rx, cur.ry, d);
-                // 파란 구슬 이동
-                int[] b = roll(cur.bx, cur.by, d);
+            // 10번 초과는 실패
+            if (cur.depth >= 10) break;
 
-                // 파란 구슬이 구멍에 빠지면 실패
-                if (board[b[0]][b[1]] == 'O') continue;
+            // 4방향 탐색
+            for (int i = 0; i < 4; i++) {
+                // 빨간 구슬 굴리기
+                int[] redResult = move(cur.rx, cur.ry, dx[i], dy[i]);
+                int nrx = redResult[0], nry = redResult[1], rMove = redResult[2];
 
-                // 빨간 구슬만 구멍에 빠졌으면 성공
-                if (board[r[0]][r[1]] == 'O') return 1;
+                // 파란 구슬 굴리기
+                int[] blueResult = move(cur.bx, cur.by, dx[i], dy[i]);
+                int nbx = blueResult[0], nby = blueResult[1], bMove = blueResult[2];
 
-                // 두 구슬이 겹치면, 더 많이 이동한 구슬을 한 칸 뒤로
-                if (r[0] == b[0] && r[1] == b[1]) {
-                    if (r[2] > b[2]) {
-                        r[0] -= dx[d];
-                        r[1] -= dy[d];
+                // 파란 구슬이 구멍에 빠지면 이 시도는 실패
+                if (board[nbx][nby] == 'O') continue;
+
+                // 빨간 구슬만 구멍에 빠지면 성공
+                if (board[nrx][nry] == 'O') {
+                    System.out.println(1);
+                    return;
+                }
+
+                // 두 구슬이 같은 위치면 더 많이 움직인 쪽을 한 칸 뒤로
+                if (nrx == nbx && nry == nby) {
+                    if (rMove > bMove) {
+                        nrx -= dx[i];
+                        nry -= dy[i];
                     } else {
-                        b[0] -= dx[d];
-                        b[1] -= dy[d];
+                        nbx -= dx[i];
+                        nby -= dy[i];
                     }
                 }
 
-                if (!visited[r[0]][r[1]][b[0]][b[1]]) {
-                    visited[r[0]][r[1]][b[0]][b[1]] = true;
-                    q.add(new State(r[0], r[1], b[0], b[1], cur.depth + 1));
+                // 방문 여부 확인
+                String key = nrx + "," + nry + "," + nbx + "," + nby;
+                if (!visited.contains(key)) {
+                    visited.add(key);
+                    q.add(new State(nrx, nry, nbx, nby, cur.depth + 1));
                 }
             }
         }
 
-        return 0; // 10번 안에 성공 못 하면 실패
+        System.out.println(0);
+    }
+
+    // 구슬을 한 방향으로 굴리는 함수 (벽이나 구멍 만날 때까지)
+    static int[] move(int x, int y, int dx, int dy) {
+        int cnt = 0;
+        while (true) {
+            if (board[x + dx][y + dy] == '#' || board[x][y] == 'O') break;
+            x += dx;
+            y += dy;
+            cnt++;
+        }
+        return new int[]{x, y, cnt};
     }
 }
